@@ -1,0 +1,400 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?
+  role          String    @default("TOURIST")
+  avatar        String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts           Account[]
+  sessions           Session[]
+  accommodations     Accommodation[]
+  bookings           Booking[]
+  reviews            Review[]
+  diveCenters        DiveCenter[]
+  diveBookings       DiveBooking[]
+  fishingCharters    FishingCharter[]
+  fishingBookings    FishingBooking[]
+  liveaboards        Liveaboard[]
+  liveaboardBookings LiveaboardBooking[]
+  rewards            Reward[]
+  wishlists          Wishlist[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Atoll {
+  id          String  @id @default(cuid())
+  name        String
+  code        String  @unique
+  description String
+  lat         Float
+  lng         Float
+  imageUrl    String?
+
+  islands Island[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Island {
+  id          String  @id @default(cuid())
+  name        String
+  atollId     String
+  description String
+  type        String  @default("LOCAL")
+  lat         Float
+  lng         Float
+  images      String  @default("[]")
+  population  Int?
+  area        Float?
+
+  atoll           Atoll            @relation(fields: [atollId], references: [id])
+  accommodations  Accommodation[]
+  diveSites       DiveSite[]
+  surfSpots       SurfSpot[]
+  fishingCharters FishingCharter[]
+  excursions      Excursion[]
+  marineLocations MarineLocation[]
+  diveCenters     DiveCenter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Accommodation {
+  id          String  @id @default(cuid())
+  name        String
+  type        String  @default("GUESTHOUSE")
+  islandId    String
+  ownerId     String
+  description String
+  images      String  @default("[]")
+  priceFrom   Float
+  rating      Float   @default(0)
+  amenities   String  @default("{}")
+  lat         Float?
+  lng         Float?
+  featured    Boolean @default(false)
+  active      Boolean @default(true)
+
+  island      Island       @relation(fields: [islandId], references: [id])
+  owner       User         @relation(fields: [ownerId], references: [id])
+  rooms       Room[]
+  diveCenters DiveCenter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Room {
+  id              String  @id @default(cuid())
+  accommodationId String
+  name            String
+  type            String
+  maxGuests       Int     @default(2)
+  pricePerNight   Float
+  images          String  @default("[]")
+  amenities       String  @default("{}")
+  available       Boolean @default(true)
+
+  accommodation Accommodation @relation(fields: [accommodationId], references: [id])
+  bookings      Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Booking {
+  id              String   @id @default(cuid())
+  userId          String
+  roomId          String
+  checkIn         DateTime
+  checkOut        DateTime
+  guests          Int      @default(1)
+  totalPrice      Float
+  status          String   @default("PENDING")
+  paymentId       String?
+  specialRequests String?
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userId     String
+  targetType String
+  targetId   String
+  rating     Float
+  title      String
+  content    String
+  images     String   @default("[]")
+  helpful    Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model DiveSite {
+  id              String  @id @default(cuid())
+  name            String
+  islandId        String
+  lat             Float
+  lng             Float
+  depth           Float
+  difficulty      String  @default("INTERMEDIATE")
+  type            String  @default("REEF")
+  description     String
+  marineLife      String  @default("[]")
+  images          String  @default("[]")
+  visibility      Float?
+  currentStrength String?
+
+  island Island @relation(fields: [islandId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DiveCenter {
+  id              String  @id @default(cuid())
+  name            String
+  accommodationId String?
+  islandId        String
+  ownerId         String
+  description     String
+  certifications  String  @default("[]")
+  equipment       String  @default("{}")
+  priceFrom       Float
+  images          String  @default("[]")
+
+  accommodation Accommodation? @relation(fields: [accommodationId], references: [id])
+  island        Island         @relation(fields: [islandId], references: [id])
+  owner         User           @relation(fields: [ownerId], references: [id])
+  diveBookings  DiveBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DiveBooking {
+  id             String   @id @default(cuid())
+  userId         String
+  diveCenterId   String
+  date           DateTime
+  diveType       String
+  numberOfDivers Int      @default(1)
+  totalPrice     Float
+  status         String   @default("PENDING")
+  notes          String?
+
+  user       User       @relation(fields: [userId], references: [id])
+  diveCenter DiveCenter @relation(fields: [diveCenterId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SurfSpot {
+  id             String  @id @default(cuid())
+  name           String
+  islandId       String
+  lat            Float
+  lng            Float
+  difficulty     String  @default("INTERMEDIATE")
+  waveType       String
+  bestSeason     String
+  swellDirection String
+  windDirection  String
+  description    String
+  images         String  @default("[]")
+
+  island Island @relation(fields: [islandId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FishingCharter {
+  id          String @id @default(cuid())
+  name        String
+  islandId    String
+  ownerId     String
+  description String
+  boatName    String
+  capacity    Int    @default(6)
+  images      String @default("[]")
+  pricePerDay Float
+  tripTypes   String @default("[]")
+
+  island          Island           @relation(fields: [islandId], references: [id])
+  owner           User             @relation(fields: [ownerId], references: [id])
+  fishingBookings FishingBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FishingBooking {
+  id             String   @id @default(cuid())
+  userId         String
+  charterId      String
+  date           DateTime
+  tripType       String
+  numberOfPeople Int      @default(1)
+  totalPrice     Float
+  status         String   @default("PENDING")
+
+  user    User           @relation(fields: [userId], references: [id])
+  charter FishingCharter @relation(fields: [charterId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Liveaboard {
+  id          String @id @default(cuid())
+  name        String
+  ownerId     String
+  description String
+  capacity    Int
+  cabins      Int
+  images      String @default("[]")
+  priceFrom   Float
+  routes      String @default("[]")
+  amenities   String @default("{}")
+  boatType    String
+  length      Float
+
+  owner              User               @relation(fields: [ownerId], references: [id])
+  liveaboardBookings LiveaboardBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LiveaboardBooking {
+  id           String   @id @default(cuid())
+  userId       String
+  liveaboardId String
+  startDate    DateTime
+  endDate      DateTime
+  cabinType    String
+  guests       Int      @default(1)
+  totalPrice   Float
+  status       String   @default("PENDING")
+
+  user       User       @relation(fields: [userId], references: [id])
+  liveaboard Liveaboard @relation(fields: [liveaboardId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Excursion {
+  id             String  @id @default(cuid())
+  name           String
+  islandId       String
+  type           String  @default("SNORKEL")
+  description    String
+  duration       Int
+  pricePerPerson Float
+  images         String  @default("[]")
+  maxGuests      Int     @default(12)
+
+  island Island @relation(fields: [islandId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MarineLocation {
+  id          String  @id @default(cuid())
+  name        String
+  type        String  @default("ATTRACTION")
+  islandId    String
+  lat         Float
+  lng         Float
+  description String?
+
+  island Island @relation(fields: [islandId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  points      Int      @default(0)
+  badge       String?
+  description String
+  earnedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  userId     String
+  targetType String
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, targetType, targetId])
+}
